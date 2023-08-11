@@ -9,7 +9,7 @@ class Keyboard {
     protected static function getSectionBody($html_string)
     {
         preg_match('#<section>(?<section_body>.+?)</section>#su', $html_string, $matches);
-        return $matches['section_body'];
+        return ['section_body' => $matches['section_body'], 'section' => $matches[0]];;
     }
 
     protected static function getButtonsRows($section_body)
@@ -18,24 +18,39 @@ class Keyboard {
         return $matches[0];
     }
 
-    protected static function createKeyboardStructure($keyboard_type, $buttons_rows_array)
+    protected static function createKeyboardStructure($keyboard_type, $buttons_rows_array, array $fields = null)
     {
+
         $keyboard_structure = [
             $keyboard_type => []
         ];
 
-        $regexp = '#<button\s*callback-data\s*=\s*["\'](?<callback_data>[^"\']*)["\']\s*>(?<text>.+?)</button>#su';
+        $text_regexp = '/<button\s*>(?<text>.+?)<\s*\/\s*button\s*>/su';
+        $field_regexp = '/<button\s*(?<attribute>(?<field>.+?)\s*=\s*["\'](?<value>.*?)["\']).*<\s*\/\s*button\s*>/su';
+        $button_regexp = '/(?<button><\s*button.+?<\s*\/\s*button\s*>)/su';
 
-        foreach($buttons_rows_array as $buttons_row) {
+        foreach ($buttons_rows_array as $buttons_row) {
             $row = [];
-            while(preg_match($regexp, $buttons_row, $matches)) {
-                $col = [];
-                $col['text'] = trim($matches['text']);
-                $col['callback_data'] = trim($matches['callback_data']);
-                $row[] = $col;
-                $buttons_row = preg_replace($regexp, '', $buttons_row, 1);
+            while (preg_match($button_regexp, $buttons_row, $outer_matches)) {
+               $col = [];
+               $button = $outer_matches['button'];
+               while (preg_match($field_regexp, $button, $inner_matches)) {
+                   $attribute_regexp = quotemeta("#{$inner_matches['attribute']}#su");
+                   $col[$inner_matches['field']] = $inner_matches['value'];
+                   $button = preg_replace($attribute_regexp, '', $button, 1);
+               }
+               preg_match($text_regexp, $button, $inner_matches);
+               $buttons_row = preg_replace($button_regexp, '', $buttons_row, 1);
+               $col['text'] = $inner_matches['text'];
+               $row[] = $col;
             }
             $keyboard_structure[$keyboard_type][] = $row;
+        }
+
+        if(!is_null($fields)) {
+            foreach ($fields as $field => $value) {
+                $keyboard_structure[$field] = $value;
+            }
         }
         return $keyboard_structure;
     }

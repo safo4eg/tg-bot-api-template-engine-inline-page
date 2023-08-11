@@ -5,7 +5,7 @@ use Utils\InlinePage;
 
 spl_autoload_register();
 
-$fields = InlinePage::getFields('test', 'inline_page');
+$fields = InlinePage::getFields('test', 'inline_page', ['resize_keyboard' => true]);
 
 echo '<pre>';
 print_r($fields);
